@@ -162,23 +162,43 @@ COMMENT ON FUNCTION natcod.generatep_hb_series
   IS 'Obtain a sequency of hidden-bit Natural Codes P set (fixed length), from zero to 2^bit_len-1.'
 ;
 
-CREATE FUNCTION natcod.generate_hb_series(bit_len int) RETURNS setof bigint as $f$
+-- after review need drop
+DROP FUNCTION IF EXISTS natcod.generate_hb_series;
+DROP FUNCTION IF EXISTS natcod.generate_vbit_series;
+
+CREATE FUNCTION natcod.generate_hb_series(
+  bit_len int,
+  p_non_recursive boolean default false
+) RETURNS setof bigint as $f$
 -- See optimized at https://stackoverflow.com/q/75503880/287948
 DECLARE
   s text;
 BEGIN
-  s := 'SELECT * FROM natcod.generatep_hb_series(1)';
-  FOR i IN 2..bit_len LOOP
-    s := s || ' UNION ALL  SELECT * FROM natcod.generatep_hb_series('|| i::text ||')';
-  END LOOP;
+  IF p_non_recursive THEN
+  	  s := 'SELECT * FROM natcod.generatep_hb_series('|| bit_len::text ||')';
+  ELSE
+	  s := 'SELECT * FROM natcod.generatep_hb_series(1)';
+	  FOR i IN 2..bit_len LOOP
+	    s := s || ' UNION ALL  SELECT * FROM natcod.generatep_hb_series('|| i::text ||')';
+	  END LOOP;
+  END IF;
   RETURN QUERY EXECUTE s;
 END;
 $f$ LANGUAGE PLpgSQL IMMUTABLE;
+COMMENT ON FUNCTION natcod.generate_hb_series(int,boolean)
+  IS 'Obtain a sequency of all hidden-bit numbers, for generate_vbit_series().'
+;
 
-CREATE FUNCTION natcod.generate_vbit_series(bit_len int) RETURNS setof varbit as $f$
+CREATE FUNCTION natcod.generate_vbit_series(
+  bit_len int,
+  p_non_recursive boolean default false
+) RETURNS setof varbit as $f$
   SELECT natcod.hiddenbig_to_vbit(hb)
-  FROM natcod.generate_hb_series(CASE WHEN bit_len>62 THEN 62 WHEN bit_len<=0 THEN 1 ELSE bit_len END) t(hb) ORDER BY 1
+  FROM natcod.generate_hb_series(
+    CASE WHEN bit_len>62 THEN 62 WHEN bit_len<=0 THEN 1 ELSE bit_len END,
+    p_non_recursive
+  ) t(hb) ORDER BY 1
 $f$ LANGUAGE SQL IMMUTABLE;
-COMMENT ON FUNCTION natcod.generate_vbit_series(int)
+COMMENT ON FUNCTION natcod.generate_vbit_series(int,boolean)
   IS 'Obtain a sequency of all Natural Codes of bit_len, with 63>bit_len>0.'
 ;
