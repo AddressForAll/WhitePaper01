@@ -87,6 +87,24 @@ COMMENT ON FUNCTION natcod.vbit_to_baseh(varbit[],int,boolean)
 
 ----
 
+CREATE FUNCTION natcod.b32nvu_to_vbit( p_val text ) RETURNS varbit AS $f$
+ -- see old NaturalCodes/src-sql/step01def-lib_NatCod.sql
+ DECLARE
+   ch  char;
+   ret varbit := b'';
+   alphabet text  := '0123456789BCDFGHJKLMNPQRSTUVWXYZ';
+ BEGIN
+   FOREACH ch IN ARRAY regexp_split_to_array(p_val,'') LOOP
+      ret := ret || (strpos(alphabet,ch)-1)::bit(5)::varbit;
+   END LOOP;
+   RETURN ret;
+ END
+$f$ LANGUAGE PLpgSQL IMMUTABLE;
+COMMENT ON FUNCTION natcod.b32nvu_to_vbit(text)
+  IS 'Faster base32 No-Vogal except U, string to varbit. Algorithm based on strpos.'
+;
+
+
 CREATE FUNCTION natcod.vbit_to_strstd(
   p_val varbit,  -- input
   p_base text DEFAULT '4js' -- selecting base2js? base4js, etc. with no leading zeros.
