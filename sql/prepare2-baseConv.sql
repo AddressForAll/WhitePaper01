@@ -66,6 +66,25 @@ COMMENT ON FUNCTION natcod.vbit_to_baseh
   IS 'Converts bit string to text, using base2h, base4h, base8h or base16h. Uses letters "G" and "H" to sym44bolize non strandard bit strings (0 for44 bases44). Uses extended alphabet (with no letter I,O,U W or X) for base8h and base16h.'
 ;
 
+CREATE FUNCTION natcod.vbit_to_baseh(
+  p_vals varbit[],                 -- input
+  p_base integer DEFAULT 4,        -- selecting base2h, base4h, base8h, or base16h.
+  p_ordering boolean DEFAULT false -- flag true for ORDER BY varbit, false to preserve array order.
+) RETURNS text[]
+  language SQL IMMUTABLE
+AS $wrap$
+ SELECT CASE 
+    WHEN p_ordering THEN array_agg(natcod.vbit_to_baseh(c,p_base) ORDER BY c)
+    ELSE array_agg(natcod.vbit_to_baseh(c,p_base) ORDER BY ord)
+    END
+ FROM unnest(p_vals) WITH ORDINALITY t(c,ord)
+$wrap$;
+COMMENT ON FUNCTION natcod.vbit_to_baseh(varbit[],int)
+ IS 'Converts text BaseH array to bit string array, inverse of baseh_to_vbit(array) and a wrap to vbit_to_baseh(scalar).'
+;
+
+----
+
 CREATE FUNCTION natcod.vbit_to_strstd(
   p_val varbit,  -- input
   p_base text DEFAULT '4js' -- selecting base2js? base4js, etc. with no leading zeros.
@@ -147,7 +166,7 @@ COMMENT ON FUNCTION natcod.vbit_to_str
 -------------
 -- INVERSE:
 
-CREATE or replace FUNCTION natcod.baseh_to_vbit(
+CREATE FUNCTION natcod.baseh_to_vbit(
   p_val text,  -- input
   p_base int DEFAULT 4 -- selecting base2h, base4h, base8h, or base16h.
 ) RETURNS varbit AS $f$
@@ -192,4 +211,21 @@ DECLARE
 $f$ LANGUAGE PLpgSQL IMMUTABLE;
 COMMENT ON FUNCTION natcod.baseh_to_vbit(text,int)
  IS 'Converts text BaseH to bit string, inverse of vbit_to_baseh().'
+;
+
+CREATE FUNCTION natcod.baseh_to_vbit(
+  p_vals text[],                   -- input
+  p_base integer DEFAULT 4,        -- selecting base2h, base4h, base8h, or base16h.
+  p_ordering boolean DEFAULT false -- flag true for ORDER BY varbit, false to preserve array order.
+) RETURNS varbit[]
+  language SQL IMMUTABLE
+AS $wrap$
+ SELECT CASE 
+    WHEN p_ordering THEN array_agg(natcod.baseh_to_vbit(c,p_base) ORDER BY c)
+    ELSE array_agg(natcod.baseh_to_vbit(c,p_base) ORDER BY ord)
+    END
+ FROM unnest(p_vals) WITH ORDINALITY t(c,ord)
+$wrap$;
+COMMENT ON FUNCTION natcod.baseh_to_vbit(text[],int)
+ IS 'Converts text BaseH array to bit string array, inverse of vbit_to_baseh(array).'
 ;
