@@ -1,4 +1,5 @@
-[200~## To install in PostgreSQL v9+
+
+## To install in PostgreSQL v9+
 
 ```bash
 # # # # # # # #

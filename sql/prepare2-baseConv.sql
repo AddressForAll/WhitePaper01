@@ -249,7 +249,7 @@ AS $f$
  SELECT array_agg(cbits ORDER BY cbits)
  FROM (
    SELECT DISTINCT c FROM unnest(p_l0_list) l0(c)
-   WHERE p_level=0.0
+   WHERE p_level=0.0 OR NOT(p_non_recursive)
 
   UNION ALL
    SELECT DISTINCT CASE
