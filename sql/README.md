@@ -1,4 +1,4 @@
-## To install in PostgreSQL v9+
+[200~## To install in PostgreSQL v9+
 
 ```bash
 # # # # # # # #
@@ -20,3 +20,17 @@ psql test < prepare2b-demo.sql | diff - ../data/prepare2b-demo.txt
 # # # # # # # #
 # alternative: sudo -u postgres psql test
 ```
+
+Run in the order prepare0, prepare1, prepare1a, prepare1b, prepare2, etc.
+
+For full documentation see https://wiki.addressForAll.org/...
+
+## prepare0-binCodes
+
+Lib basic with Apache lincese. Define all Natcod functions.
+
+## prepare1-binCodes
+
+Lib basic with CC-BY-NC-SA license. Define all Natcod functions.
+
+## ...

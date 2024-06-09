@@ -1,3 +1,5 @@
+-- -- --
+-- Part of the NatCode library, see also prepare0-binCodes.sql and prepare1-binCodes.sql files.
 
 CREATE SCHEMA IF NOT EXISTS natcod;
 
@@ -73,13 +75,13 @@ CREATE FUNCTION natcod.vbit_to_baseh(
 ) RETURNS text[]
   language SQL IMMUTABLE
 AS $wrap$
- SELECT CASE 
+ SELECT CASE
     WHEN p_ordering THEN array_agg(natcod.vbit_to_baseh(c,p_base) ORDER BY c)
     ELSE array_agg(natcod.vbit_to_baseh(c,p_base) ORDER BY ord)
     END
  FROM unnest(p_vals) WITH ORDINALITY t(c,ord)
 $wrap$;
-COMMENT ON FUNCTION natcod.vbit_to_baseh(varbit[],int)
+COMMENT ON FUNCTION natcod.vbit_to_baseh(varbit[],int,boolean)
  IS 'Converts text BaseH array to bit string array, inverse of baseh_to_vbit(array) and a wrap to vbit_to_baseh(scalar).'
 ;
 
@@ -166,7 +168,7 @@ COMMENT ON FUNCTION natcod.vbit_to_str
 -------------
 -- INVERSE:
 
-CREATE FUNCTION natcod.baseh_to_vbit(
+CREATE or replace FUNCTION natcod.baseh_to_vbit(
   p_val text,  -- input
   p_base int DEFAULT 4 -- selecting base2h, base4h, base8h, or base16h.
 ) RETURNS varbit AS $f$
@@ -188,6 +190,7 @@ DECLARE
   ret varbit;
   BEGIN
   ret = '';
+  p_val = translate(lower(p_val),'ghjkmnpqrstvzy','GHJKMNPQRSTVZY');
   blk := regexp_match(p_val,'^([0-9a-f]*)([GHJKMNP-TVZY])?$');
   IF blk[1] >'' THEN
     FOREACH i IN ARRAY regexp_split_to_array(blk[1],'') LOOP
@@ -220,12 +223,67 @@ CREATE FUNCTION natcod.baseh_to_vbit(
 ) RETURNS varbit[]
   language SQL IMMUTABLE
 AS $wrap$
- SELECT CASE 
+ SELECT CASE
     WHEN p_ordering THEN array_agg(natcod.baseh_to_vbit(c,p_base) ORDER BY c)
     ELSE array_agg(natcod.baseh_to_vbit(c,p_base) ORDER BY ord)
     END
  FROM unnest(p_vals) WITH ORDINALITY t(c,ord)
 $wrap$;
-COMMENT ON FUNCTION natcod.baseh_to_vbit(text[],int)
+COMMENT ON FUNCTION natcod.baseh_to_vbit(text[],int,boolean)
  IS 'Converts text BaseH array to bit string array, inverse of vbit_to_baseh(array).'
+;
+
+-----
+
+
+---
+
+-- DROP FUNCTION IF EXISTS natcod.parents_to_children CASCADE;
+CREATE or replace FUNCTION natcod.parents_to_children(
+  p_level     real,      -- last lavel to return
+  p_l0_list   varbit[],  -- Natcod parents. In AFAcodes the L0 list of scientific codes. Distinct ones.
+  p_non_recursive boolean default true,  -- when false returns a recursive list.
+  p_majority      boolean default true   -- when false ignores abnormal p_l0_list, with non-uniform lenght.
+) RETURNS varbit[] language SQL IMMUTABLE
+AS $f$
+ SELECT array_agg(cbits ORDER BY cbits)
+ FROM (
+   SELECT DISTINCT c FROM unnest(p_l0_list) l0(c)
+   WHERE p_level=0.0
+
+  UNION ALL
+   SELECT DISTINCT CASE
+     WHEN p_majority AND majority_len < length(l0.cbits) THEN CASE
+       WHEN (length(t.cbits) + majority_len) <= length(l0.cbits) THEN l0.cbits
+       ELSE l0.cbits || substring( t.cbits, length(l0.cbits)-majority_len +1 )
+       END
+     ELSE l0.cbits||t.cbits
+   END
+   FROM natcod.generate_vbit_series( (p_level*2.0)::int, p_non_recursive ) t(cbits),
+        unnest(p_l0_list) l0(cbits),
+        (SELECT natcod.array_median_length(p_l0_list)) l0_mj(majority_len)
+   WHERE p_level>0.0
+ ) t2 (cbits)
+$f$;
+COMMENT ON FUNCTION natcod.parents_to_children(real,varbit[],boolean,boolean)
+  IS 'Generate series of cbits of a country defined by p_l0_list_b16. When p_non_recursive is false generates recursivally. When p_majority is false ignores abnormal list.'
+;
+
+-- DROP FUNCTION IF EXISTS natcod.parents_to_children_baseh(real,text[],int,boolean,boolean) CASCADE;
+CREATE or replace FUNCTION natcod.parents_to_children_baseh(
+  p_level     real,      -- last lavel to return
+  p_l0_list   text[],  -- Natcod parents (lower case codes). In AFAcodes the L0 list of scientific codes. Distinct ones.
+  p_baseh     int default 16,  -- 4,8 or 16 (default)
+  p_non_recursive boolean default true,  -- when false returns a recursive list.
+  p_majority      boolean default true   -- when false ignores abnormal p_l0_list, with non-uniform lenght.
+) RETURNS text[] language SQL IMMUTABLE
+AS $wrap$
+ SELECT natcod.vbit_to_baseh(
+           natcod.parents_to_children(p_level, natcod.baseh_to_vbit(p_l0_list,p_baseh), p_non_recursive, p_majority),
+           p_baseh,
+           true   -- ordered
+       )
+$wrap$;
+COMMENT ON FUNCTION natcod.parents_to_children_baseh(real,text[],int,boolean,boolean)
+  IS 'Generate series of parent-list defined by p_l0_list, a base16 list of codes. When p_non_recursive is false generates recursivally. When p_majority is false ignores abnormal list. Wrap for parents_to_children().'
 ;

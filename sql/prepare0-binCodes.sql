@@ -67,6 +67,9 @@ COMMENT ON FUNCTION varbit_to_bigint
 CREATE FUNCTION natcod.strbit_to_vbit(b text, p_len int DEFAULT null) RETURNS varbit AS $f$
    SELECT CASE WHEN p_len>0 THEN  lpad(b, p_len, '0')::varbit ELSE  b::varbit  END
 $f$  LANGUAGE SQL IMMUTABLE;
+COMMENT ON FUNCTION strbit_to_vbit
+  IS 'Cast from string to varbit, with optional lpad zeros when given a length.'
+;
 
 CREATE FUNCTION natcod.bitlength(x bigint) RETURNS int as $f$
   SELECT 65-position(B'1' in x::bit(64))
@@ -116,6 +119,9 @@ CREATE FUNCTION natcod.hBig_to_hiddenBig(x bigint) RETURNS bigint AS $f$
    -- não pode incluir um bit antes pois seria o bit do negativo.
    -- = SELECT natcod.vbit_to_hiddenbig( natcod.hBig_to_vBit(x) );
 $f$ LANGUAGE SQL IMMUTABLE;
+COMMENT ON FUNCTION natcod.hBig_to_hiddenBig(bigint)
+  IS 'Converts hierarchical-Bigint to hidden-Bigint.'
+;
 
 
 ---- MORE convertions
@@ -149,6 +155,27 @@ COMMENT ON FUNCTION natcod.kbig_to_vbit(bigint)
   IS 'Converts left_copy hiherarchical Bigint (kbig), representing hidden-bit Natural Code, into varbit.'
 ;
 
+-----
+
+CREATE FUNCTION natcod.array_median_length( p_vals varbit[] ) RETURNS int
+  language SQL IMMUTABLE
+AS $f$
+ SELECT percentile_disc (0.5) WITHIN GROUP ( ORDER BY length(x))
+ FROM unnest(p_vals) t(x)
+$f$;
+COMMENT ON FUNCTION natcod.array_median_length(varbit[])
+ IS 'Median of lenghts of bit string codes. Used by grid cover generation, see natcod.parents_to_children().'
+;
+
+CREATE FUNCTION natcod.array_median_length( p_vals text[] ) RETURNS int
+  language SQL IMMUTABLE
+AS $f$
+ SELECT percentile_disc (0.5) WITHIN GROUP ( ORDER BY length(x))
+ FROM unnest(p_vals) t(x)
+$f$;
+COMMENT ON FUNCTION natcod.array_median_length(text[])
+ IS 'Median of characters-lenght of codes. Used by grid cover generation, see natcod.parents_to_children().'
+;
 
 ---------------
 -- -- GENERATE SERIES:
