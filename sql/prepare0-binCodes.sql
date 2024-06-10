@@ -67,7 +67,7 @@ COMMENT ON FUNCTION varbit_to_bigint
 CREATE FUNCTION natcod.strbit_to_vbit(b text, p_len int DEFAULT null) RETURNS varbit AS $f$
    SELECT CASE WHEN p_len>0 THEN  lpad(b, p_len, '0')::varbit ELSE  b::varbit  END
 $f$  LANGUAGE SQL IMMUTABLE;
-COMMENT ON FUNCTION strbit_to_vbit
+COMMENT ON FUNCTION natcod.strbit_to_vbit
   IS 'Cast from string to varbit, with optional lpad zeros when given a length.'
 ;
 
@@ -190,8 +190,8 @@ COMMENT ON FUNCTION natcod.generatep_hb_series
 ;
 
 -- after review need drop
-DROP FUNCTION IF EXISTS natcod.generate_hb_series;
-DROP FUNCTION IF EXISTS natcod.generate_vbit_series;
+-- DROP FUNCTION IF EXISTS natcod.generate_hb_series;
+-- DROP FUNCTION IF EXISTS natcod.generate_vbit_series;
 
 CREATE FUNCTION natcod.generate_hb_series(
   bit_len int,
