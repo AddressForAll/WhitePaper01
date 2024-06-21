@@ -315,3 +315,18 @@ $wrap$;
 COMMENT ON FUNCTION natcod.parents_to_children_baseh(real,text[],int,boolean,boolean,boolean)
   IS 'Generate series of parent-list defined by p_l0_list, a base16 list of codes. When p_non_recursive is false generates recursivally. When p_majority is false ignores abnormal list. Wrap for parents_to_children().'
 ;
+
+CREATE or replace FUNCTION natcod.parents_to_children(
+  p_intlevel int, varbit[], boolean default true, boolean default true 
+) RETURNS text[] language SQL IMMUTABLE
+AS $wrap$
+ SELECT natcod.parents_to_children( p_intlevel/10.0, $2, $3, $4 )
+$wrap$;
+
+CREATE or replace FUNCTION natcod.parents_to_children_baseh(
+  p_intlevel int, text[], int, boolean default true, boolean default true, boolean default true 
+) RETURNS text[] language SQL IMMUTABLE
+AS $wrap$
+ SELECT natcod.parents_to_children_baseh( p_intlevel/10.0, $2, $3, $4, $5, $6 )
+$wrap$;
+
